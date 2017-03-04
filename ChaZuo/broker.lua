@@ -1,29 +1,21 @@
 local dispatcher = {}
 
 function sendData()
-		gpio.write(GPIO_BL_LED,gpio.LOW)
+		if (GPIO_LED ~= GPIO_BL_LED) then gpio.write(GPIO_BL_LED,gpio.LOW) end
 	local temp, humi,stat = getTempHumi()
 		if (stat == dht.OK ) then
 			tempjson="{\"temperature\":\""..temp.."\",\"humidity\":\""..humi.."\"}"
 			print("send .." .. tempjson)
 			m:publish(MQTT_MAINTOPIC .."/sensor",tempjson,0,0)
 		end
-		--if (gpio.read(GPIO_LED) == 0) then 
-		--		m:publish(MQTT_MAINTOPIC .."/stat","ON",0,0)
-		--		print("send .." .. "ON")
-		--else
-		--		m:publish(MQTT_MAINTOPIC .."/stat","OFF",0,0)
-		--		print("send .." .. "OFF")
-		--end
-		--blinking({200,2000}) 
-		gpio.write(GPIO_BL_LED,gpio.HIGH)
+		if (GPIO_LED ~= GPIO_BL_LED) then gpio.write(GPIO_BL_LED,gpio.HIGH) end
 end
 
 function getTempHumi()
   local status,temp,humi,temp_decimial,humi_decimial = dht.read(GPIO_DHT)
   if( status == dht.OK ) then
     -- Float firmware using this example
-    --print("DHT Temperature:"..temp..";".."Humidity:"..humi)
+
   elseif( status == dht.ERROR_CHECKSUM ) then
     print( "DHT Checksum error." );
   elseif( status == dht.ERROR_TIMEOUT ) then
