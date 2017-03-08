@@ -1,14 +1,19 @@
 local dispatcher = {}
 
 function sendData()
-		if (GPIO_LED ~= GPIO_BL_LED) then gpio.write(GPIO_BL_LED,gpio.LOW) end
+--		if (GPIO_LED ~= GPIO_BL_LED) then gpio.write(GPIO_BL_LED,gpio.LOW) end
 	local temp, humi,stat = getTempHumi()
 		if (stat == dht.OK ) then
 			tempjson="{\"temperature\":\""..temp.."\",\"humidity\":\""..humi.."\"}"
 			print("send .." .. tempjson)
 			m:publish(MQTT_MAINTOPIC .."/sensor",tempjson,0,0)
 		end
-		if (GPIO_LED ~= GPIO_BL_LED) then gpio.write(GPIO_BL_LED,gpio.HIGH) end
+		if(gpio.read(GPIO_SWITCH) == 1) then
+			m:publish(MQTT_MAINTOPIC.."/stat","ON",0,0)
+		else
+			m:publish(MQTT_MAINTOPIC.."/stat","OFF",0,0)
+		end	
+-- if (GPIO_LED ~= GPIO_BL_LED) then gpio.write(GPIO_BL_LED,gpio.HIGH) end		
 end
 
 function getTempHumi()
@@ -41,7 +46,7 @@ function switch_power(m, pl)
 		m:publish(MQTT_MAINTOPIC.."/stat","OFF",0,0)
 		print("MQTT : plug OFF for ", MQTT_CLIENTID)
 	elseif( pl == "?" ) then  --返回状态
-		if(gpio.read(GPIO_SWITCH) == 0) then
+		if(gpio.read(GPIO_SWITCH) == 1) then
 			m:publish(MQTT_MAINTOPIC.."/stat","ON",0,0)
 			else
 			m:publish(MQTT_MAINTOPIC.."/stat","OFF",0,0)
@@ -59,7 +64,9 @@ m:on('connect', function(m)
 	m:subscribe(MQTT_MAINTOPIC..'/', 0, function (m)
 		print('MQTT : subscribed to ', MQTT_MAINTOPIC) 
 		--if GPIO_DHT~=nil then 
-			tmr.alarm(3,5000,1,sendData)
+			blinking()
+			gpio.write(GPIO_BL_LED, gpio.HIGH)
+			tmr.alarm(3,30000,1,sendData)
 		--end
 	end)
 	gpio.trig(GPIO_BUTTON, "up", M_button_press )
@@ -69,10 +76,11 @@ m:on('offline', function(m)
 	MQTTReady = 0
     ip = wifi.sta.getip()
     print ("MQTT reconnecting to " .. mqttBroker .. " from " .. ip)
-    tmr.alarm(3, 10000, 0, function()
+		blinking({100,20000})
+	    tmr.alarm(3, 10000, 0, function()
         --node.restart();
-		--blinking({1000,2000}) 
-    end)
+		if(GPIO_LED ~= GPIO_BL_LED) then blinking({1000, 500}) end
+        end)
 end)
 
 m:on('message', function(m, topic, pl)
